@@ -1,0 +1,130 @@
+---
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+--
+title: "Statistical Foundations for Data Science - Assignment5 "
+author: "Travis Deason"
+date: "Oct 1st 2017"
+output:  word_document
+---
+
+# MSDS 6371 HW 5
+
+```{r, echo=FALSE, message=FALSE}
+rm( list = ls()); cat("\014")  # Clear environment
+```
+
+
+## 1. Simply Answer Question 25 pg. 147 from the Statistical Sleuth:. Plot the raw data and also plot the data after a log transform.  Do the data after a log transform satisfy the assumptions better?    The data is in ex0525.csv  Perform this analysis in SAS. Please include a complete analysis on the log transformed data.
+
+```{r, echo=TRUE, message=FALSE}
+income_df = read.csv('data/ex0525_2.csv')
+names(income_df) <- tolower(names(income_df))
+income_cats <- unique(income_df$educ)
+edu_sub_12 = subset(income_df$income2005, income_df$educ == income_cats[1])
+edu_16_plus = subset(income_df$income2005, income_df$educ == income_cats[2])
+edu_12 = subset(income_df$income2005, income_df$educ == income_cats[3])
+edu_13_15 = subset(income_df$income2005, income_df$educ == income_cats[4])
+edu_16 = subset(income_df$income2005, income_df$educ == income_cats[5])
+summary(income_df)
+```
+
+*1*.	State the Problem
+
+>* Based on the 5 diffirent eduation levels provided in ex0525_2.csv.  How strong is the evidence that one or more of the populations is diffirent from the others.
+
+*2*.	Address the assumptions.  (Comment on each assumption.  Use the visual test as the Brown-Forstythe test will be overpowered due to the large sample size.  This simply means that it is able to detect very small effect sizes (differences in standard deviations) which may not be big enough to practically affect the test.)  Comment on your thoughts of the assumptions, but in the end, assume there is not enough visual evidence to suggest the standard deviations of the log transformed data are different.
+
+```{r, echo=TRUE, message=FALSE}
+boxplot(income2005~educ , data= income_df)
+hist(sample(edu_sub_12, 136))
+hist(sample(edu_12, 136))
+hist(sample(edu_13_15, 136))
+hist(edu_16)
+hist(sample(edu_16_plus, 136))
+
+income_df$logincome <- log(income_df$income2005)
+
+boxplot(logincome~educ , data= income_df)
+
+hist(subset(income_df$logincome, income_df$educ == income_cats[1]))
+hist(subset(income_df$logincome, income_df$educ == income_cats[2]))
+hist(subset(income_df$logincome, income_df$educ == income_cats[3]))
+hist(subset(income_df$logincome, income_df$educ == income_cats[4]))
+hist(subset(income_df$logincome, income_df$educ == income_cats[5]))
+
+```
+
+>* The data is not normal for most of the subsets.  The data most similarly resemlbes an exponential curve.
+>* The plot variances seem similar for most of the groups, with the exception of the less then 12 years of education group.  Since neither the data is normal or with similar variance, we will apply a log transformation to the data, and this gives us normal data of equal variance
+>* Since the data was chosen at random, and there is no covariance, it is safe to assume the data is independent.  An exception to this assumption would be if not all of the children initally selected were surveyed for income in 2005.
+
+*3*.	Conduct the Test. (An example is in the UNIT 5 PowerPoint.)
+
+```{r, echo=TRUE, message=FALSE}
+income_anova <- aov(logincome~educ, data= income_df)
+summary(income_anova)
+
+```
+```{r, echo=TRUE, message=FALSE}
+income_r2 = (2232.1) / (2232.1+217)
+print(income_r2)
+```
+
+*4*.	Write a conclusion. (An example is in the UNIT 5 PowerPoint.)
+
+>* Based on the ANOVA analysis of the Five income groups, we reject the null hypothesis that income is independent of education level with a p_value of virtually zero.  
+
+*5*.	State the Scope. (Can we generalize to the entire population or just the sample that was taken?)
+
+>* Since the test group was taken from a random sample of youth in 1979, we can assume there is a coorelation between education level and income for youth who are in grade school in 1979.  We cannot neccessarily assume that coorelation extends to youth from a diffirent generational group, or that the relationship bewtween education levels and income is causational.  There could be counfounding variables, and the cirmustances which led to the incomes observed in 2005 could have changed over the course of 26 years.
+
+>* The R^2 value for this model is .9113, and the mean 
+
+*Looking to the future!  This is not an additional problem.  Just FYI: The next step will be to look at these pairwise if we reject the Ho to discover WHICH pairs have evidence of different means / medians.
+ADDITIONAL THINGS TO INCLUDE
+
+>*a*.	Please also identify  R2
+
+>*b*.	Also specify the mean square error and how many degrees of freedom were used to estimate it.
+
+>*c*.	Provide the code to perform the ANOVA in R and a screen shot of the output.  
+
+***
+## 2. Use an extra sum of squares F-test (BYOA … Build Your Own ANOVA!) to use all the data (to increase the degrees of freedom and thus the power of the test!) to compare only the bachelor’s degree group (16) mean income to the graduate degree group (>16) mean income.  Show your final ANOVA table and your 6 step complete analysis.   You will need to assume that the standard deviations are gain equal to proceed here.  A two sample t-test between these two groups yields a p-value of .1403 (try it!) but it only uses 778 degrees of freedom (from a pooled t-test.)  Make note again of how many degrees of freedom were used to estimate the pooled standard deviation in your extra sum of squares test.  You may use SAS or R.  
+
+```{r, echo=TRUE, message=FALSE}
+
+library(stringr)
+income_df$grp16s = gsub('>', '', income_df$educ)
+sub_anova = aov(logincome~grp16s, data= income_df)
+print(summary(sub_anova))
+print(summary(income_anova))
+```
+
+
+```{r, echo=TRUE, message=FALSE}
+f <- 71.89 / 54.41
+print(f)
+dof_total <- 2232.1
+dof_residual <- 2234.1
+p_val = pf(f, dof_total, dof_residual)
+```
+
+* Based on the sample data, comparing the test group who received only a bachelors degree when compared to the students who received a masters or doctrorite degree (16 plus years of education).  Takes the same assumptions as with a complete ANOVA.  Using Logarithmic transformed data-set to approximate normality, and at a .95 significance level, we fail to reject the null hypothesis that there is no difference in income between those with a bachelors degree and those with a higher degree.  The p value for this test with 2232 and 2234 degrees of freedom is .999 
+
+***
+*3*.  Now assume that you cannot assume the standard deviations are the same.  Conduct another complete analysis of the question in Chapter 5, 25 in Statistical Sleuth. Answer the question, “How strong is the evidence that at least one of the five population distributions (corresponding to the different years of education) is different from the others?”  This question should be answered in at least 1 or 2 sentences and should use the results from the complete analysis without the assumption of equal standard deviations.  Perform the test in SAS or R.
+
+>* If we cannot assume equal variance after a numerical transformation of the income dataset, we can then utilize a non-parametric version of the ANOVA test  called the Kruskal Wallis test.  For this test, we assume, since the children were chosen at random, that the observations are independent.  That all groups have a similar shaped distribution.  In this case, it is well approximated by an expoential distribution, and that There are two or more indepdent groups.  In this case there are five independent groups.
+
+```{r, echo=TRUE, message=FALSE}
+nparam_test <- kruskal.test(income2005~educ, data= income_df)
+print(nparam_test)
+
+```
+
+>* Running tht Kruskal-Wallis rank sum test in R gives us a p-value of 2.2 e -16  which is very similar to the value we got off the log-transformation of the data.  this is expected.  In this case, since both tests give the same p-value, it would be better to use the log transform; because it does not result in information loss.  In either case, we will reject the null hypothesis at a significence level of .95.  It is highly unlikley that all of the data was selected from the same distribution.
