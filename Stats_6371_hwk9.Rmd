@@ -46,7 +46,7 @@ mse = sqrt(sse / 28)
 se = mse / sqrt(sum((baseball$payroll - mean(baseball$payroll) **2)))
 mean(baseball$payroll)
 mean(baseball$wins)
-fcrit = qt(.975, 28)
+fcrit = qf(.975, 28, 2)
 ```
 
 >* In testing to see if there is a statistically significent correlation between the amount a team spends on payroll and the number of wins that team will recieve, the null hypothesis is that the Slope is equal to zero, and our alternative hypothesis is that the absolute value of the slope is greater then zero.

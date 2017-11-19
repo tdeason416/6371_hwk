@@ -1,0 +1,135 @@
+---
+output:
+  word_document: default
+---
+--
+title: "Statistical Foundations for Data Science - Assignment8 "
+author: "Travis Deason"
+date: "Oct 22nd 2017"
+output:  word_document
+---
+
+# MSDS 6371 UNIT 10 HW
+* These are the same data from last week’s HW.  Now, we are going to use them for simple linear regression.
+
+```{r, echo=FALSE, message=FALSE}
+rm( list = ls()); cat("\014")  # Clear environment
+library(Hmisc)
+library(ggplot2)
+crabs <- read.csv('data/Crab17_2_2.csv')
+names(crabs) <- sapply(names(crabs), tolower)
+unique(crabs$species)
+brains <- read.csv('data/Brain_2_2.csv')
+names(brains) <- sapply(names(brains), tolower)
+```
+## 1.	As part of a study of the effects of predatory intertidal crab species on snail populations, researchers measured the mean closing forces and the propodus heights of the claws on several crabs of three species. The data is in the file crab.csv.
+### a.	Step 1: Use the code from Dr. McGee’s lecture to plot a scatter plot of claw closing force versus propodus height, with different plotting symbols (or colors) to distinguish the three different crab species.  Judging from an initial visual assessment of the scatterplots, you may apply a transformation and replot in this step.  If a transformation is necessary, you only need to provide the scatterplot for the most visually satisfying transformation for now.  You will formally assess the fit of the model in Step 4.  Please provide these plots in both R and SAS and provide the code for each.  
+### b.	Step 2:  Build a model (simply write it out as was shown in class.)  This model should allow for separate fits (separate lines) for each crab and should also allow for each line to have its own slope.
+### c.	Step 3: Fit the model.  Please do this in both SAS and R.  Provide the proc glm or proc reg statement in SAS as well as the code used in R.  In addition, provide a screen shot of the parameter estimate tables output in both SAS and R. 
+### d.	Step 4: Provide a residual plot, studentized residual plot, histogram of residuals and q-q plot of residuals to provide evidence of the appropriateness of the model. (Please provide the plots in both SAS and R.)  Provide each plot and a short one or two sentence description of each plot.  
+### e.	Step 5: If the fit assessed in Step 4 is sufficient, interpret each coefficient in the model.  
+#### BONUS 1pt:  How many degrees of freedom were used to estimate the error term (MSE)?
+#### BONUS 1pt:  What is the estimate of the MSE?
+
+```{r echo=TRUE, message=FALSE}
+## a.
+# find unique sepcies values
+specs <- unique(crabs$species)
+## b. Generate model
+model <- lm(force~height, data=crabs)
+model_cancer <- lm(force~height, data=subset(crabs, species == 'Cancer_productus'))
+model_hemi <- lm(force~height, data=subset(crabs, species == 'Hemigrapsus_nudus'))
+model_lapho <- lm(force~height, data=subset(crabs, species == 'Lophopanopeus_bellus'))
+coeff <- coefficients(model)
+group.colors <- c(Hemigrapsus_nudus = "green",
+                  Lophopanopeus_bellus = "blue",
+                  Cancer_productus ="red")
+ggplot(crabs, aes(x=height, y=force, colour=species)) +
+  geom_point() +
+  # plot regression for all species
+  scale_colour_manual(values=setNames(group.colors, specs)) +
+  # plot regression for all species
+  geom_abline(intercept= coeff[1],1, slope= coeff[2],1) +
+  # plot regression for cancer
+  geom_abline(intercept=  model_cancer$coefficients[1],1, 
+              slope= model_cancer$coefficients['height'],1, color='red') +
+  # plot regression for hemi
+  geom_abline(intercept= model_hemi$coefficients[1],1, 
+              slope= model_hemi$coefficients['height'],1, color='green') +
+  # plot regression for lapho
+  geom_abline(intercept= model_lapho$coefficients[1],1, 
+              slope= model_lapho$coefficients['height'],1, color='blue')
+print('all crabs')
+print(summary(model))
+
+crabs$residuals <- model$residuals
+ggplot(crabs, aes(x=residuals)) + geom_histogram()
+```
+
+# the residuals seem to be bimodal, which could be an indication that multipule linear regression is required in this model with a dummy variable for the forms of species
+
+```{r echo=TRUE, message=FALSE}
+
+crabs$cancer <- crabs$species == 'Cancer_productus'
+crabs$hemi <- crabs$species == 'Hemigrapsus_nudus'
+crabs$lapho <- crabs$species == 'Lophopanopeus_bellus'
+
+multi_model <- lm(force~height +cancer + hemi + lapho, data=crabs)
+
+crabs$mul_residuals <- multi_model$residuals
+ggplot(crabs, aes(x=mul_residuals)) + geom_histogram()
+
+plot(crabs$height, crabs$mul_residuals)
+
+summary(multi_model)
+
+```
+>* For the Crabs dataset, using dummy variables to substitute for species, our model gives us an adjusted R squared of .6447, and the p-value for height is .000133, .944209 for the cancer dummy variable, .000724 for the hemi dummy variable.  This indicates that the Lophopanopeus_bellus species dummy variable added the most value to to model; while the other crab types showed a similarly strong linear relationship between height and claw force.  This indicates that there is a strong linear relationship between height and force for most crab types, but this is not true for Lophopanopeus_bellus crabs.  The model, with 34 degrees of freedom shows that for every 1 cm of additional height, claw force increases by 1.9N.  for the Hemigrapsus_nudus there is an offset of 9.52 Newtons (decreased force), an additional .1693N for the Cancer_productus, and the Lophopanopeus_bellus are represented by setting all dummy values to zero.  The Intercept value for this model is -1.75 N which would imply a crab with no height would have a clamp force of -1.75N.  This interpetation is impossible because a crab could not have a height of zero, and it is far out of sample.
+
+
+## 2.	Read the introduction to the Mammal Brain Weight data that starts on page 239 (Section 9.1.2). Download the data set from 2DS (Brain.csv).  We would like to see if gestation length and litter size are associated with brain weight after controlling for different body sizes.  That is, we already know that brain size is related to body weight; therefore, we don’t want body size to be a confounding variable.  We would like to measure the association of the other variables after taking into account the body size.  Answer this question by forming an analysis by following the 5 steps laid out in the problem above. Remember in step 2 to only include the terms that will help you answer this question of interest (QOI).  You may do this in SAS OR R.  Please provide the code for whichever you used.  
+#### BONUS 1pt: How many degrees of freedom were used to estimate the error term (MSE)?
+#### BONUS 1pt: What is the estimate of the MSE?
+
+```{r echo=TRUE, message=FALSE}
+library(reshape2)
+brains$gest_norm <- (brains$gestation - min(brains$gestation)) / 
+                      max(brains$gestation) - min(brains$gestation)
+
+brains$litter_norm <- (brains$litter - min(brains$litter)) / 
+                      max(brains$litter) - min(brains$litter)
+
+#brain_melt <- melt(brains, id.vars = "brain")
+#brain_melt <- subset(brain_melt, variable == 'litter_norm' | variable == 'gest_norm')
+
+#brain_melt$value <- sapply(brain_melt$value, as.numeric)
+
+br_model <- lm(brain~gestation+litter, data=brains)
+brains$resid <- br_model$residuals
+summary(br_model)
+
+#all_model <- lm(brain~gest_norm + litter_norm, data=brains)
+gest_model <- lm(brain~gestation, data=brains)
+litter_model <- lm(brain~litter, data=brains)
+
+summary(br_model)
+
+group.colors <- c(litter_norm = "red",
+                  gest_norm = "blue")
+
+plot(x=brains$brain, y=brains$residuals)
+hist(br_model$residuals)
+
+```
+
+>* For the model on the dataset, the adjusted Rsquared value generated by a multipule linear regression on brain weight verses litter size and getstation time is .5752; which means that 57.52 percent of the variance in brain weight can be accounted for by the realtionship with litter size and gestation time.
+
+>* The coefficents in this model are 4.2411 for gestation time in weeks with a t-value of 10.778 and a p value of ~0.  This means that for each additional week of gestation time, there isa n estimated increase of brain mass of 4.2411 grams.  For the litter size the coefficent is 84.5180.  This means that for each additional offspring brought in a litter, there is an additonal 84 grams of brain mass.  This relationship has a t-value of 3.472 and a p value of .000785.  There are 93 degrees of freedom in this model, and both coefficents are significaent at a 95 percent confidence level.  The residuals are normally distributed enough that the model can be considered statistically significent, and the MSE is 18.176 grams
+
+ 
+ 
+ 
+ 
+ 
+
+

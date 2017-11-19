@@ -14,9 +14,7 @@ output:  word_document
 
 ```{r, echo=FALSE, message=FALSE}
 rm( list = ls()); cat("\014")  # Clear environment
-#install.packages('hmisc')
 #install.packages('ggplot2')
-#library(Hmisc)
 library(ggplot2)
 metdata <- read.csv('data/MetabolismDataProb26_2_2.csv')
 names(metdata) <- sapply(names(metdata), tolower)
@@ -26,23 +24,20 @@ names(metdata) <- sapply(names(metdata), tolower)
 >* A Scatterplot with confidence intervals of the regression line and prediction intervals of the regression line.  In SAS and R!
 
 ```{r echo=TRUE, message=FALSE}
-model <- lm(metab~mass, data=metdata)
-ggplot(metdata$mass, model$residuals, )
+metdata$massthreeqtr <- metdata$mass ** .75
+model <- lm(metab~massthreeqtr, data=metdata)
+coeff <- coefficients(model)
+coefficients(model)
+plot <- ggplot(data=metdata, aes(x=massthreeqtr, y=metab)) + geom_point()
+plot <- plot + labs(title="Weight vs Metabolism", x='mass^(3/4)', y='Metabolism')
+plot + geom_abline(intercept= coeff[1],1, slope= coeff[2],1)
+hist(model$residuals, breaks=10)
+summary(model)
 ```
 
+>* The Plot eplot above shows the comparasin of average animal weight to the 3/4 power compared to metabolisim for 95 animals.  A linear regression of the data shows the  data is coorelated with a R^2 of .9891, meaning 98.9 percent of the variance in metabolisim (in Joules) can be explained by the relationship with weight in KG to the 3/4 power.  The p-value on the slope is .0265 on a t-value of -2.255, and ~0 on a t-value of 91.895 for the intercept term; since the residuals are normal and of equal variance, we would consider this relationship to be valid at a .95 significence level.
 
->* A table showing the t-statistics and p-values for the significance of the regression parameters: β_(0 ) and β_1.   In SAS and R!
-	The regression equation.
-	Interpretation of the model given any transformation you may use.  Hint Hint ;) 
-	A scatterplot of residuals. In SAS and R!
-	A histogram of residuals with normal distribution superimposed.  (from SAS).
-	Provide a measure of the amount of variation in the response that is accounted for by the explanatory variable.  Interpret this measure clearly indicating the units of the response and the explanatory variables.
-	
-	
-	
-	
-	
-	
+>* The equation for the line above has a slope of 395.016, meaning the metaboliic rate of an animal increases by 400 joules for each additional KG of animal mass.  The intercept of the line is -481.346J meaning if an animal had a theoritical mass of 0, that animal would have a metabolic rate below 0.  This of course is not possible, but since an animal cannot weigh zero, we will not assume this is an error in the model.
 
 ## Problem 29 Chapter 8
 The Autism data shows the prevalence of autism per 10,000 ten-year old children in the United States in each of five years.  Analyze the data to describe the change in the distribution of autism prevalence per year in this time period.  
@@ -54,9 +49,41 @@ The Autism data shows the prevalence of autism per 10,000 ten-year old children 
 	A histogram of residuals with normal distribution superimposed.  (from SAS).
 	Provide a measure of the amount of variation in the response that is accounted for by the explanatory variable.  Interpret this measure clearly indicating the units of the response and the explanatory variables.
 
+```{r echo=TRUE, message=FALSE}
+autisim <- read.csv('data/AutismDataProb29_2_2.csv')
+names(autisim) <- sapply(names(autisim), tolower)
+autisim$logprevalence <- log(autisim$prevalence)
+model <- lm(logprevalence~year, data=autisim)
+coeff <- coefficients(model)
+coefficients(model)
+#plot <- ggplot(data=autisim, aes(x=year, y=logprevalence)) + geom_point()
+#plot <- plot + labs(title="Autisim Prevelance per Year", x='Year', y='log(Autisim Prevelance)')
+#plot + geom_abline(intercept= coeff[1],1, slope= coeff[2],1)
+slope <- model$coefficients['year']
+intercept <- model$coefficients[1]
+#Prediction intervals
+pred.int =  predict(model, interval="prediction")
+#Confidence intervals
+conf.int =  predict(model, interval="confidence")
+# Add predictions and CI to original data
+autisim$pred.lower <- pred.int[,2]
+autisim$pred.upper <- pred.int[,3]
+autisim$ci.upper <- conf.int[,2]
+autisim$ci.lower <- conf.int[,3]
+## plot
+ggplot(data=autisim, aes(x=year, y=logprevalence, main='Scatterplot of data with regression line and Confidence intervals')) + 
+  geom_point(color= 'red') +
+  geom_abline(intercept=intercept, slope=slope, color='black') +
+  geom_ribbon(data=autisim, aes(ymin= pred.lower, ymax= pred.upper), fill = "blue", alpha = 0.2) +
+  geom_ribbon(data=autisim, aes(ymin= ci.lower, ymax= ci.upper), fill = "cyan", alpha = 0.3) 
+summary(model)
+
+hist(autisim$year)
+```
  
- 
- 
+>* The Plot eplot above shows the comparasin of the year compared with the log of autisim prevalance for that year.  A linear regression of the data shows the  data is coorelated with a R^2 of .994, meaning 99.4 percent of the variance in autisim prevelanve (in autistic children per 10000) can be explained by the relationship with weight in e to the year.  The p-value on the slope is 3.94e-6 on a t-value of -82.38, and 3.88e-6 on a t-value of 82.79 for the intercept term; since the residuals are of equal variance, we would consider this relationship to be valid at a .95 significence level.
+
+>* The equation for the line above has a slope of .2054, meaning the log of the rate of an autisim increases by .2054 children per 10,000 children born every year.  The intercept of the line is -4.080e-2 meaning for year zero there were theoretically the log of -400 children diagnoised with autisim for every 10,000 children; Since it is impossible to have less then zero children diagnoised with autisim, and data has not been tracked back to the year 0, this data can be considered out of scope for the dataset.
  
  
 
